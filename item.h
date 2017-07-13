@@ -41,7 +41,7 @@ typedef struct _stritem {
 void item_init(void);
 item *do_item_from_freelist(void);
 int do_item_add_to_freelist(item *);
-item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbytes);
-item *item_alloc2(void);
+item *item_alloc_pack(char *key, const size_t nkey, const int flags, const int nbytes);
+item *item_alloc(void);
 int item_free(item *it);
 #endif

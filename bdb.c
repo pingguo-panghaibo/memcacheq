@@ -19,6 +19,8 @@
  */
 
 #include "memcacheq.h"
+#include "item.h"
+#include "bdb.h"
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -28,11 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <db.h>
 #include <assert.h>
-
-#define CHECK_DB_RET(ret) \
-  if (0!=ret) goto dberr
 
 static unsigned int hashfromkey(void *k);
 static int equalkeys(void *k1, void *k2);
@@ -504,7 +502,7 @@ item *bdb_get(char *key){
         db_recno_t recno;
 
         /* first, alloc a fixed size */
-        it = item_alloc2();
+        it = item_alloc();
         if (it == 0) {
             pthread_rwlock_unlock(&qlist_ht_lock);            
             return NULL;

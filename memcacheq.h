@@ -28,7 +28,6 @@
 #include <netinet/in.h>
 #include <event.h>
 #include <netdb.h>
-#include <db.h>
 #include "hashtable.h"
 #include "hash.h"
 
@@ -185,57 +184,18 @@ conn *do_conn_from_freelist();
 bool do_conn_add_to_freelist(conn *c);
 conn *conn_new(const int sfd, const int init_state, const int event_flags, const int read_buffer_size, const bool is_udp, struct event_base *base);
 
-/* bdb */
-#define DBHOME "/data1/memcacheq"
 
-#define BDB_CLEANUP_DBT() \
-    memset(&dbkey, 0, sizeof(dbkey)); \
-    memset(&dbdata, 0, sizeof(dbdata))
-
-struct bdb_settings {
-    char *env_home;
-    u_int32_t cache_size;
-    u_int32_t txn_lg_bsize;
-    u_int32_t log_auto_remove;
-    u_int32_t page_size;
-    int txn_nosync;
-    int deadlock_detect_val;
-    int checkpoint_val;
-    int mempool_trickle_val;
-    int mempool_trickle_percent;
-    int qstats_dump_val;
-    u_int32_t re_len;
-    u_int32_t q_extentsize;
-};
 
 typedef struct _qstats {
   int64_t set_hits;
   int64_t get_hits;
 } qstats_t;
 
-typedef struct _queue {
-  DB* dbp;
-  int64_t set_hits;
-  int64_t get_hits;
-  int64_t old_set_hits;
-  int64_t old_get_hits;
-  pthread_mutex_t lock;
-} queue_t;
 
 extern struct bdb_settings bdb_settings;
 extern DB_ENV *envp;
 
-void  qlist_ht_init(void);
-void  qlist_ht_close(void);
-void  bdb_settings_init(void);
-void  bdb_env_init(void);
-void  bdb_env_close(void);
-void  bdb_qlist_db_open(void);
-void  bdb_qlist_db_close(void);
-int   bdb_create_queue(char *queue_name);
-int   bdb_delete_queue(char *queue_name);
-int   bdb_set(char *key, item *it);
-item* bdb_get(char *key);
+
 void print_queue_stats(char *temp, int len_limit);
 
 void start_checkpoint_thread(void);

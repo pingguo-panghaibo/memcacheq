@@ -108,7 +108,7 @@ static size_t item_make_header(const uint8_t nkey, const int flags, const int nb
 /*
  * alloc a item buffer, and init it.
  */
-item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbytes)
+item *item_alloc_pack(char *key, const size_t nkey, const int flags, const int nbytes)
 {
     uint8_t nsuffix;
     item *it;
@@ -136,7 +136,7 @@ item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbyte
 /*
  * alloc a item buffer only.
  */
-item *item_alloc2(void)
+item *item_alloc(void)
 {
     item *it;
     it = item_from_freelist();
