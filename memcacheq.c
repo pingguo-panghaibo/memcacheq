@@ -19,6 +19,7 @@
  */
 
 #include "memcacheq.h"
+#include "item.h"
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -152,38 +153,30 @@ static void settings_init(void) {
 static int add_msghdr(conn *c)
 {
     struct msghdr *msg;
-
     assert(c != NULL);
-
     if (c->msgsize == c->msgused) {
         msg = realloc(c->msglist, c->msgsize * 2 * sizeof(struct msghdr));
-        if (! msg)
+        if (msg == NULL) {
             return -1;
+        }
         c->msglist = msg;
         c->msgsize *= 2;
     }
-
     msg = c->msglist + c->msgused;
-
     /* this wipes msg_iovlen, msg_control, msg_controllen, and
        msg_flags, the last 3 of which aren't defined on solaris: */
     memset(msg, 0, sizeof(struct msghdr));
-
     msg->msg_iov = &c->iov[c->iovused];
-
     if (c->request_addr_size > 0) {
         msg->msg_name = &c->request_addr;
         msg->msg_namelen = c->request_addr_size;
     }
-
     c->msgbytes = 0;
     c->msgused++;
-
     if (c->udp) {
         /* Leave room for the UDP header, which we'll fill in later. */
         return add_iov(c, NULL, UDP_HEADER_SIZE);
     }
-
     return 0;
 }
 
@@ -212,13 +205,11 @@ static void conn_init(void) {
  */
 conn *do_conn_from_freelist() {
     conn *c;
-
     if (freecurr > 0) {
         c = freeconns[--freecurr];
     } else {
         c = NULL;
     }
-
     return c;
 }
 
@@ -373,10 +364,8 @@ void conn_free(conn *c) {
 
 static void conn_close(conn *c) {
     assert(c != NULL);
-
     /* delete the event, the socket and the conn */
     event_del(&c->event);
-
     if (settings.verbose > 1)
         fprintf(stderr, "<%d connection closed.\n", c->sfd);
 
@@ -388,11 +377,9 @@ static void conn_close(conn *c) {
     if (c->rsize > READ_BUFFER_HIGHWAT || conn_add_to_freelist(c)) {
         conn_free(c);
     }
-
     STATS_LOCK();
     stats.curr_conns--;
     STATS_UNLOCK();
-
     return;
 }
 
@@ -407,10 +394,8 @@ static void conn_close(conn *c) {
  */
 static void conn_shrink(conn *c) {
     assert(c != NULL);
-
     if (c->udp)
         return;
-
     if (c->rsize > READ_BUFFER_HIGHWAT && c->rbytes < DATA_BUFFER_SIZE) {
         char *newbuf;
 
@@ -426,7 +411,6 @@ static void conn_shrink(conn *c) {
         /* TODO check other branch... */
         c->rcurr = c->rbuf;
     }
-
     if (c->isize > ITEM_LIST_HIGHWAT) {
         item **newbuf = (item**) realloc((void *)c->ilist, ITEM_LIST_INITIAL * sizeof(c->ilist[0]));
         if (newbuf) {
@@ -435,7 +419,6 @@ static void conn_shrink(conn *c) {
         }
     /* TODO check error condition? */
     }
-
     if (c->msgsize > MSG_LIST_HIGHWAT) {
         struct msghdr *newbuf = (struct msghdr *) realloc((void *)c->msglist, MSG_LIST_INITIAL * sizeof(c->msglist[0]));
         if (newbuf) {
@@ -444,7 +427,6 @@ static void conn_shrink(conn *c) {
         }
     /* TODO check error condition? */
     }
-
     if (c->iovsize > IOV_LIST_HIGHWAT) {
         struct iovec *newbuf = (struct iovec *) realloc((void *)c->iov, IOV_LIST_INITIAL * sizeof(c->iov[0]));
         if (newbuf) {
@@ -2023,7 +2005,8 @@ static void sig_handler(const int sig)
     sleep(2);
 }
 
-int main (int argc, char **argv) {
+int main (int argc, char **argv)
+{
     int c;
     struct in_addr addr;
     bool do_daemonize = false;
@@ -2035,13 +2018,10 @@ int main (int argc, char **argv) {
     struct rlimit rlim;
     /* listening socket */
     static int *l_socket = NULL;
-
     /* udp socket */
     static int *u_socket = NULL;
     static int u_socket_count = 0;
-
     char *portstr = NULL;
-
     /* register signal callback */
     if (signal(SIGTERM, sig_handler) == SIG_ERR)
         fprintf(stderr, "can not catch SIGTERM\n");
@@ -2198,10 +2178,12 @@ int main (int argc, char **argv) {
         exit(EXIT_FAILURE);
     } else {
         int maxfiles = settings.maxconns;
-        if (rlim.rlim_cur < maxfiles)
+        if (rlim.rlim_cur < maxfiles) {
             rlim.rlim_cur = maxfiles + 3;
-        if (rlim.rlim_max < rlim.rlim_cur)
+        }
+        if (rlim.rlim_max < rlim.rlim_cur) {
             rlim.rlim_max = rlim.rlim_cur;
+        }
         if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
             fprintf(stderr, "failed to set rlimit for open files. Try running as root or requesting smaller maxconns value.\n");
             exit(EXIT_FAILURE);
@@ -2242,7 +2224,6 @@ int main (int argc, char **argv) {
     item_init();
     stats_init();
     conn_init();
-
     /*
      * ignore SIGPIPE signals; we can use errno==EPIPE if we
      * need that information
@@ -2264,8 +2245,8 @@ int main (int argc, char **argv) {
     /* create unix mode sockets after dropping privileges */
     if (settings.socketpath != NULL) {
         if (server_socket_unix(settings.socketpath,settings.access)) {
-          fprintf(stderr, "failed to listen\n");
-          exit(EXIT_FAILURE);
+            fprintf(stderr, "failed to listen\n");
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -2312,17 +2293,11 @@ int main (int argc, char **argv) {
     bdb_qlist_db_close();
     bdb_env_close();
     qlist_ht_close();
-    
     /* remove the PID file if we're a daemon */
-    if (do_daemonize)
-        remove_pidfile(pid_file);
+    if (do_daemonize) remove_pidfile(pid_file);
     /* Clean up strdup() call for bind() address */
-    if (settings.inter)
-      free(settings.inter);
-    if (l_socket)
-      free(l_socket);
-    if (u_socket)
-      free(u_socket);
-
+    if (settings.inter) free(settings.inter);
+    if (l_socket) free(l_socket);
+    if (u_socket) free(u_socket);
     return 0;
 }

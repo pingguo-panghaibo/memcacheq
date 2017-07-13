@@ -46,12 +46,12 @@ int daemonize(int nochdir, int noclose)
     int fd;
 
     switch (fork()) {
-    case -1:
-        return (-1);
-    case 0:
-        break;
-    default:
-        _exit(EXIT_SUCCESS);
+        case -1:
+            return (-1);
+        case 0:
+            break;
+        default:
+            _exit(EXIT_SUCCESS);
     }
 
     if (setsid() == -1)

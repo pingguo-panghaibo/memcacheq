@@ -18,31 +18,23 @@
  *
  */
 
-#include "memcacheq.h"
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <stdlib.h>
-
-#define MAX_ITEM_FREELIST_LENGTH 4000
-#define INIT_ITEM_FREELIST_LENGTH 500
-
-static size_t item_make_header(const uint8_t nkey, const int flags, const int nbytes, char *suffix, uint8_t *nsuffix);
+#include "item.h"
 
 static item **freeitem;
 static int freeitemtotal;
 static int freeitemcurr;
 
-void item_init(void) {
+void item_init(void)
+{
     freeitemtotal = INIT_ITEM_FREELIST_LENGTH;
     freeitemcurr  = 0;
-
-    freeitem = (item **)malloc( sizeof(item *) * freeitemtotal );
+    freeitem = (item **)malloc(sizeof(item *) * freeitemtotal);
     if (freeitem == NULL) {
         perror("malloc()");
     }
@@ -53,7 +45,8 @@ void item_init(void) {
  * Returns a item buffer from the freelist, if any. Sholud call
  * item_from_freelist for thread safty.
  * */
-item *do_item_from_freelist(void) {
+item *do_item_from_freelist(void)
+{
     item *s;
 
     if (freeitemcurr > 0) {
@@ -61,12 +54,11 @@ item *do_item_from_freelist(void) {
     } else {
         /* If malloc fails, let the logic fall through without spamming
          * STDERR on the server. */
-        s = (item *)malloc( bdb_settings.re_len );
-        if (s != NULL){
+        s = (item *)malloc( bdb_settings.re_len);
+        if (s != NULL) {
             memset(s, 0, bdb_settings.re_len);
         }
     }
-
     return s;
 }
 
@@ -74,7 +66,8 @@ item *do_item_from_freelist(void) {
  * Adds a item to the freelist. Should call 
  * item_add_to_freelist for thread safty.
  */
-int do_item_add_to_freelist(item *it) {
+int do_item_add_to_freelist(item *it)
+{
     if (freeitemcurr < freeitemtotal) {
         freeitem[freeitemcurr++] = it;
         return 0;
@@ -106,8 +99,7 @@ int do_item_add_to_freelist(item *it) {
  *
  * Returns the total size of the header.
  */
-static size_t item_make_header(const uint8_t nkey, const int flags, const int nbytes,
-                     char *suffix, uint8_t *nsuffix) {
+static size_t item_make_header(const uint8_t nkey, const int flags, const int nbytes, char *suffix, uint8_t *nsuffix) {
     /* suffix is defined at 40 chars elsewhere.. */
     *nsuffix = (uint8_t) snprintf(suffix, 40, " %d %d\r\n", flags, nbytes - 2);
     return sizeof(item) + nkey + *nsuffix + nbytes;
@@ -116,16 +108,15 @@ static size_t item_make_header(const uint8_t nkey, const int flags, const int nb
 /*
  * alloc a item buffer, and init it.
  */
-item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbytes) {
+item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbytes)
+{
     uint8_t nsuffix;
     item *it;
     char suffix[40];
     size_t ntotal = item_make_header(nkey + 1, flags, nbytes, suffix, &nsuffix);
-    
     if(ntotal > bdb_settings.re_len){
         return NULL;
     }
-
     it = item_from_freelist();
     if (it == NULL){
         return NULL;
@@ -145,17 +136,16 @@ item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbyte
 /*
  * alloc a item buffer only.
  */
-item *item_alloc2(void) {
+item *item_alloc2(void)
+{
     item *it;
-
     it = item_from_freelist();
-    if (it == NULL){
+    if (it == NULL) {
         return NULL;
     }
     if (settings.verbose > 1) {
         fprintf(stderr, "alloc a item buffer from freelist.\n");
     }
-
     return it;
 }
 
@@ -163,16 +153,15 @@ item *item_alloc2(void) {
  * free a item buffer.
  */
 
-int item_free(item *it) {
-    if (NULL == it)
-        return 0;
-
+int item_free(item *it)
+{
+    if (NULL == it) return 0;
     if (0 != item_add_to_freelist(it)) {
         if (settings.verbose > 1) {
             fprintf(stderr, "add a item buffer to freelist fail, use free() directly.\n");
         }
         free(it);   
-    }else{
+    } else {
         if (settings.verbose > 1) {
             fprintf(stderr, "add a item buffer to freelist.\n");
         }

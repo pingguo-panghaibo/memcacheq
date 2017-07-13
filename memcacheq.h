@@ -103,23 +103,6 @@ struct settings {
 extern struct stats stats;
 extern struct settings settings;
 
-typedef struct _stritem {
-    int             nbytes;     /* size of data */
-    uint8_t         nsuffix;    /* length of flags-and-length string */
-    uint8_t         nkey;       /* key length, w/terminating null and padding */
-    void * end[];
-    /* then null-terminated key */
-    /* then " flags length\r\n" (no terminating null) */
-    /* then data with terminating \r\n (no terminating null; it's binary!) */
-} item;
-
-#define ITEM_key(item) ((char*)&((item)->end[0]))
-
-/* warning: don't use these macros with a function, as it evals its arg twice */
-#define ITEM_suffix(item) ((char*) &((item)->end[0]) + (item)->nkey + 1)
-#define ITEM_data(item) ((char*) &((item)->end[0]) + (item)->nkey + 1 + (item)->nsuffix)
-#define ITEM_ntotal(item) (sizeof(struct _stritem) + (item)->nkey + 1 + (item)->nsuffix + (item)->nbytes)
-
 enum conn_states {
     conn_listening,  /** the socket which listens for connections */
     conn_read,       /** reading in a command line */
@@ -196,14 +179,6 @@ struct conn {
 /*
  * Functions
  */
-
-/* item buffer management */
-void item_init(void);
-item *do_item_from_freelist(void);
-int do_item_add_to_freelist(item *it);
-item *item_alloc1(char *key, const size_t nkey, const int flags, const int nbytes);
-item *item_alloc2(void);
-int item_free(item *it);
 
 /* conn management */
 conn *do_conn_from_freelist();
