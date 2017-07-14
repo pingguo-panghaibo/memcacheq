@@ -6,8 +6,9 @@
 #define QNET_OK 0
 #define QNET_ERR -1
 
-int netSetBlockState(int fd, int state);
-int netFdBlock(int fd);
+/*
+ * all network function define
+ */
 int netFdNonBlock(int fd);
-
+int netReuseAddr(int fd);
 #endif

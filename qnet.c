@@ -1,17 +1,55 @@
 #include "qnet.h"
+#include <netdb.h>
+#include <sys/socket.h>
+#include <fcntl.h>
 
+/**
+ * set the fd non bhlock
+ * @param fd int file discrite
+ * @return int
+ */
+int netFdNonBlock(int fd)
+{
+	 int flag;
+     if (-1 == (flag = fcntl(fd, F_GETFL))) {
+         return QNET_ERR;
+     }
+     if ((flag & O_NONBLOCK) != 1 && -1 == (flag = fcntl(fd, F_SETFL, flag|O_NONBLOCK))) {
+         return QNET_ERR;
+     }
+     return QNET_OK;
+}
+
+/**
+ * socket reuse address
+ * @params fd int
+ * @return int
+ */
+int netReuseAddress(int fd)
+{
+    int flag;
+    flag = 1;
+    if (-1 == setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flag, sizeof(flag))) {
+        return QNET_ERR;
+    }
+    return QNET_OK;
+}
+
+
+/**
+ *
+ */
 int new_socket(struct addrinfo *ai)
 {
     int sfd, flags;
     if ((sfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1) {
         perror("socket()");
-        return -1;
+        return QNET_ERR;
     }
-    if ((flags = fcntl(sfd, F_GETFL, 0)) < 0 ||
-        fcntl(sfd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        perror("setting O_NONBLOCK");
+    if ((flags = netFdNonBlock(sfd)) == QNET_ERR) {
+    	perror("setting O_NONBLOCK");
         close(sfd);
-        return -1;
+        return QNET_ERR;
     }
     return sfd;
 }
